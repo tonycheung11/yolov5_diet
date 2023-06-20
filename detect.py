@@ -35,6 +35,7 @@ import sys
 from pathlib import Path
 
 import torch
+from numpy import linalg as LA
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -79,6 +80,10 @@ def run(
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
         vid_stride=1,  # video frame-rate stride
+        chopsticks_len=25,
+        fork_len=18,
+        knife_len=20,
+        spoon_len=18,
 ):
     source = str(source)
     save_img = True #not nosave and not source.endswith('.txt')  # save inference images
@@ -152,6 +157,7 @@ def run(
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             if len(det):
                 # Rescale boxes from img_size to im0 size
+                print(type(det))
                 det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results
@@ -171,8 +177,26 @@ def run(
                         c = int(cls)  # integer class
                         label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                         annotator.box_label(xyxy, label, color=colors(c, True))
-                    if save_crop and c in (42,43,44):
-                        save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+
+                if bool(set(det[:, 5].tolist()) & set((0.,42.,43.,44.))):
+                    detcpu = det.cpu()
+                    if len(det) > 1:
+                        maxloc = torch.argmax(det[:, 4])
+                    else:
+                        maxloc = 0
+                    taritem = det[maxloc, 5]
+                    leninpix = LA.norm((detcpu[maxloc, 2] - detcpu[maxloc, 0], detcpu[maxloc, 3] - detcpu[maxloc, 1]))
+                    if taritem == 0:
+                        pixpercm = leninpix/chopsticks_len
+                    elif taritem == 42:
+                        pixpercm = leninpix / fork_len
+                    elif taritem == 43:
+                        pixpercm = leninpix / knife_len
+                    elif taritem == 44:
+                        pixpercm = leninpix / spoon_len
+                    print(pixpercm)
+
+                        #save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
             # Stream results
             im0 = annotator.result()
@@ -246,6 +270,10 @@ def parse_opt():
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     parser.add_argument('--vid-stride', type=int, default=1, help='video frame-rate stride')
+    parser.add_argument('--chopsticks-len', type=float, default=25, help='chopsticks length in cm')
+    parser.add_argument('--fork-len', type=float, default=18, help='fork length in cm')
+    parser.add_argument('--knife-len', type=float, default=20, help='knife length in cm')
+    parser.add_argument('--spoon-len', type=float, default=18, help='spoon length in cm')
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))

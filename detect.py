@@ -84,6 +84,7 @@ def run(
         fork_len=18,
         knife_len=20,
         spoon_len=18,
+        txt_dir='/home/d24h_prog1/diet/'
 ):
     source = str(source)
     save_img = True #not nosave and not source.endswith('.txt')  # save inference images
@@ -177,7 +178,7 @@ def run(
                         c = int(cls)  # integer class
                         label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                         annotator.box_label(xyxy, label, color=colors(c, True))
-
+                f = open(txt_dir + "ref_item.txt", "w")
                 if bool(set(det[:, 5].tolist()) & set((0.,42.,43.,44.))):
                     detcpu = det.cpu()
                     if len(det) > 1:
@@ -188,13 +189,21 @@ def run(
                     leninpix = LA.norm((detcpu[maxloc, 2] - detcpu[maxloc, 0], detcpu[maxloc, 3] - detcpu[maxloc, 1]))
                     if taritem == 0:
                         pixpercm = leninpix/chopsticks_len
+                        ref_item = "chopsticks" 
                     elif taritem == 42:
                         pixpercm = leninpix / fork_len
+                        ref_item = "fork"
                     elif taritem == 43:
                         pixpercm = leninpix / knife_len
+                        ref_item = "knife"
                     elif taritem == 44:
                         pixpercm = leninpix / spoon_len
+                        ref_item = "spoon"
                     print(pixpercm)
+                    f.write(str(pixpercm) + " " + ref_item)
+                else:
+                    f.write("0")
+                f.close()
 
                         #save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
@@ -274,6 +283,7 @@ def parse_opt():
     parser.add_argument('--fork-len', type=float, default=18, help='fork length in cm')
     parser.add_argument('--knife-len', type=float, default=20, help='knife length in cm')
     parser.add_argument('--spoon-len', type=float, default=18, help='spoon length in cm')
+    parser.add_argument('--txt-dir', type=str, default='/home/d24h_prog1/diet/', help='the direction of result txt')
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))

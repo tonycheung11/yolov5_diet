@@ -156,6 +156,7 @@ def run(
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+            f = open(txt_dir + "ref_item.txt", "w")
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 print(type(det))
@@ -178,32 +179,33 @@ def run(
                         c = int(cls)  # integer class
                         label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                         annotator.box_label(xyxy, label, color=colors(c, True))
-                f = open(txt_dir + "ref_item.txt", "w")
                 if bool(set(det[:, 5].tolist()) & set((0.,42.,43.,44.))):
                     detcpu = det.cpu()
-                    if len(det) > 1:
-                        maxloc = torch.argmax(det[:, 4])
+                    selset = torch.cat((detcpu[detcpu[:,5]==0.],detcpu[detcpu[:,5]==42.],detcpu[detcpu[:,5]==43.],detcpu[detcpu[:,5]==44.]),0)
+                    print(len(selset))
+                    if len(selset) > 1:
+                        maxloc = torch.argmax(selset[:, 4])
                     else:
                         maxloc = 0
-                    taritem = det[maxloc, 5]
-                    leninpix = LA.norm((detcpu[maxloc, 2] - detcpu[maxloc, 0], detcpu[maxloc, 3] - detcpu[maxloc, 1]))
+                    taritem = selset[maxloc, 5]
+                    leninpix = LA.norm((selset[maxloc, 2] - selset[maxloc, 0], selset[maxloc, 3] - selset[maxloc, 1]))
                     if taritem == 0:
                         pixpercm = leninpix/chopsticks_len
                         ref_item = "chopsticks" 
-                    elif taritem == 42:
+                    elif taritem == 42.:
                         pixpercm = leninpix / fork_len
                         ref_item = "fork"
-                    elif taritem == 43:
+                    elif taritem == 43.:
                         pixpercm = leninpix / knife_len
                         ref_item = "knife"
-                    elif taritem == 44:
+                    elif taritem == 44.:
                         pixpercm = leninpix / spoon_len
                         ref_item = "spoon"
                     print(pixpercm)
                     f.write(str(pixpercm) + " " + ref_item)
-                else:
-                    f.write("0")
-                f.close()
+            else:
+                f.write("0")
+            f.close()
 
                         #save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
